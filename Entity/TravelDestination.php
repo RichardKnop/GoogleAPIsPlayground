@@ -8,9 +8,9 @@ class TravelDestination
 	public $name;
 	public $shortDescription;
 	public $longDescription;
-	public $officialWebsite;
-	public $latitude;
-	public $longitude;
+	public $officialWebsite = NULL;
+	public $latitude = NULL;
+	public $longitude = NULL;
 	public $nearbyAirports = array();
 	public $touristAtractions = array();
 	public $averageMaxTemps = array();

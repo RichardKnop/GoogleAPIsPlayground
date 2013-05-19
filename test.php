@@ -8,11 +8,17 @@ require_once __DIR__ . '/Entity/TravelDestination.php';
 $config = require_once __DIR__ . '/config/application.config.php';
 
 $service = new \Service\Google\Freebase($config);
-$travelDestinations = $service->getTravelDestinations(1);
+$travelDestinations = $service->getTravelDestinations(1000);
 
-foreach ($travelDestinations as $travelDestination) {
-	var_dump($travelDestination);
+//foreach ($travelDestinations as $travelDestination) {
+//	var_dump($travelDestination);
+//}
+
+$saveFile = __DIR__ . '/test.data';
+if (file_exists($saveFile)) {
+	unlink($saveFile);
 }
+file_put_contents(__DIR__ . '/test.data', serialize($travelDestinations));
 
 //// GOOGLE PLACES
 

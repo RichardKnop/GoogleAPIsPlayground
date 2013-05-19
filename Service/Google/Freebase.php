@@ -24,49 +24,104 @@ class Freebase extends AbstractService
 		return $travelDestinations;
 	}
 
-	public function getTopic($id)
+	private function getTopic($id)
 	{
 		return $this->topicRequest($id);
 	}
-
-	//
-	// private functions
-	//
 	
 	private function getTravelDestinationEntity($name, $data)
 	{
 		$travelDestination = new TravelDestination();
 		$travelDestination->name = $name;
 
-		$travelDestination->officialWebsite = $data['property']['/common/topic/official_website']['values'][0]['text'];
-		$travelDestination->shortDescription = $data['property']['/common/topic/article']['values'][0]['property']['/common/document/text']['values'][0]['text'];
-		$travelDestination->longDescription = $data['property']['/common/topic/article']['values'][0]['property']['/common/document/text']['values'][0]['value'];
+		// website, short and long description
+		$travelDestination->officialWebsite = $this->getPropertyValueText($data, '/common/topic/official_website');
+		$travelDestination->shortDescription = $this->getPropertyPropertyValueText($data, '/common/topic/article', '/common/document/text');
+		$travelDestination->longDescription = $this->getPropertyPropertyValueValue($data, '/common/topic/article', '/common/document/text');
+
+		// geolocations
+		$travelDestination->latitude = $this->getPropertyPropertyValueText($data, '/location/location/geolocation', '/location/geocode/latitude');
+		$travelDestination->longitude = $this->getPropertyPropertyValueText($data, '/location/location/geolocation', '/location/geocode/longitude');
+
+		$travelDestination->nearbyAirports = $this->getPropertyValueTexts($data, '/location/location/nearby_airports');
+		$travelDestination->touristAtractions = $this->getPropertyValueTexts($data, '/travel/travel_destination/tourist_attractions');
 		
-		// geolocation
-		$travelDestination->latitude = $data['property']['/location/location/geolocation']['values'][0]['property']['/location/geocode/latitude']['values'][0]['text'];
-		$travelDestination->longitude = $data['property']['/location/location/geolocation']['values'][0]['property']['/location/geocode/longitude']['values'][0]['text'];
-		
-		foreach ($data['property']['/location/location/nearby_airports']['values'] as $nearbyAirport) {
-			$travelDestination->nearbyAirports[] = $nearbyAirport['text'];
-		}
-		
-		foreach ($data['property']['/travel/travel_destination/tourist_attractions']['values'] as $touristAttraction) {
-			$travelDestination->touristAtractions[] = $touristAttraction['text'];
-		}
-		
-		foreach ($data['property']['/travel/travel_destination/climate']['values'] as $monthlyClimateData) {
-			$month = $monthlyClimateData['property']['/travel/travel_destination_monthly_climate/month']['values'][0]['text'];
-			$travelDestination->averageMaxTemps[$month] = $monthlyClimateData['property']['/travel/travel_destination_monthly_climate/average_max_temp_c']['values'][0]['text'];
-			$travelDestination->averageMinTemps[$month] = $monthlyClimateData['property']['/travel/travel_destination_monthly_climate/average_min_temp_c']['values'][0]['text'];
-			$travelDestination->averageRainfalls[$month] = $monthlyClimateData['property']['/travel/travel_destination_monthly_climate/average_rainfall_mm']['values'][0]['text'];
-		}
-		
-		foreach ($data['property']['/common/topic/image']['values'] as $image) {
-			//TODO
-			$travelDestination->images[] = $image['id'];
-		}
-		
+		// climate data
+		$travelDestination->averageMaxTemps = $this->getMonthlyClimateData($data, '/travel/travel_destination_monthly_climate/average_max_temp_c');
+		$travelDestination->averageMinTemps = $this->getMonthlyClimateData($data, '/travel/travel_destination_monthly_climate/average_min_temp_c');
+		$travelDestination->averageRainfalls = $this->getMonthlyClimateData($data, '/travel/travel_destination_monthly_climate/average_rainfall_mm');
+
+		// pictures
+		$travelDestination->images = $this->getImages($data);
+
 		return $travelDestination;
+	}
+
+	private function getPropertyValueText($data, $property)
+	{
+		if (isset($data['property'][$property])) {
+			return $data['property'][$property]['values'][0]['text'];
+		}
+		return NULL;
+	}
+
+	private function getPropertyPropertyValueText($data, $property1, $property2)
+	{
+		if (isset($data['property'][$property1])) {
+			if (isset($data['property'][$property1]['values'][0]['property'][$property2])) {
+				return $data['property'][$property1]['values'][0]['property'][$property2]['values'][0]['text'];
+			}
+		}
+		return NULL;
+	}
+
+	private function getPropertyPropertyValueValue($data, $property1, $property2)
+	{
+		if (isset($data['property'][$property1])) {
+			if (isset($data['property'][$property1]['values'][0]['property'][$property2])) {
+				return $data['property'][$property1]['values'][0]['property'][$property2]['values'][0]['value'];
+			}
+		}
+		return NULL;
+	}
+
+	private function getPropertyValueTexts($data, $property)
+	{
+		$values = array();
+		if (isset($data['property'][$property])) {
+			foreach ($data['property'][$property]['values'] as $propertyValue) {
+				$values[] = $propertyValue['text'];
+			}
+		}
+		return $values;
+	}
+
+	private function getMonthlyClimateData($data, $property)
+	{
+		$values = array();
+		if (isset($data['property']['/travel/travel_destination/climate'])) {
+			foreach ($data['property']['/travel/travel_destination/climate']['values'] as $monthlyClimateData) {
+				if (isset($monthlyClimateData['property']['/travel/travel_destination_monthly_climate/month'])) {
+					$month = $monthlyClimateData['property']['/travel/travel_destination_monthly_climate/month']['values'][0]['text'];
+					if (isset($monthlyClimateData['property'][$property])) {
+						$values[$month] = $monthlyClimateData['property'][$property]['values'][0]['text'];
+					}
+				}
+			}
+		}
+		return $values;
+	}
+	
+	//TODO
+	private function getImages($data)
+	{
+		$images = array();
+		if (isset($data['property']['/common/topic/image'])) {
+			foreach ($data['property']['/common/topic/image']['values'] as $image) {
+				$images[] = $image['id'];
+			}
+		}
+		return $images;
 	}
 
 	private function listTopics($id, $howMany)
