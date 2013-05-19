@@ -3,12 +3,16 @@
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/Service/Google/AbstractService.php';
 require_once __DIR__ . '/Service/Google/Freebase.php';
+require_once __DIR__ . '/Entity/TravelDestination.php';
 
 $config = require_once __DIR__ . '/config/application.config.php';
 
 $service = new \Service\Google\Freebase($config);
 $travelDestinations = $service->getTravelDestinations(1);
-var_dump($travelDestinations);
+
+foreach ($travelDestinations as $travelDestination) {
+	var_dump($travelDestination);
+}
 
 //// GOOGLE PLACES
 

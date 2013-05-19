@@ -3,24 +3,27 @@
 namespace Service\Google;
 
 use Service\Google\AbstractService;
+use Entity\TravelDestination;
 
 class Freebase extends AbstractService
 {
-	
+
+	const MQL_QUERY_LIMIT = 100;
+
 	public function __construct($config)
 	{
 		parent::__construct($config, 'freebase');
 	}
 
-	public function getTravelDestinations($max)
+	public function getTravelDestinations($howMany)
 	{
-		$topics = array();
-		foreach ($this->listTopics('/travel/travel_destination', $max) as $travelDestination) {
-			$topics[] = $this->getTopic($travelDestination['id']);
+		$travelDestinations = array();
+		foreach ($this->listTopics('/travel/travel_destination', $howMany) as $topic) {
+			$travelDestinations[] = $this->getTravelDestinationEntity($topic['name'], $this->getTopic($topic['id']));
 		}
-		return $topics;
+		return $travelDestinations;
 	}
-	
+
 	public function getTopic($id)
 	{
 		return $this->topicRequest($id);
@@ -29,14 +32,51 @@ class Freebase extends AbstractService
 	//
 	// private functions
 	//
+	
+	private function getTravelDestinationEntity($name, $data)
+	{
+		$travelDestination = new TravelDestination();
+		$travelDestination->name = $name;
 
-	private function listTopics($id, $max)
+		$travelDestination->officialWebsite = $data['property']['/common/topic/official_website']['values'][0]['text'];
+		$travelDestination->shortDescription = $data['property']['/common/topic/article']['values'][0]['property']['/common/document/text']['values'][0]['text'];
+		$travelDestination->longDescription = $data['property']['/common/topic/article']['values'][0]['property']['/common/document/text']['values'][0]['value'];
+		
+		// geolocation
+		$travelDestination->latitude = $data['property']['/location/location/geolocation']['values'][0]['property']['/location/geocode/latitude']['values'][0]['text'];
+		$travelDestination->longitude = $data['property']['/location/location/geolocation']['values'][0]['property']['/location/geocode/longitude']['values'][0]['text'];
+		
+		foreach ($data['property']['/location/location/nearby_airports']['values'] as $nearbyAirport) {
+			$travelDestination->nearbyAirports[] = $nearbyAirport['text'];
+		}
+		
+		foreach ($data['property']['/travel/travel_destination/tourist_attractions']['values'] as $touristAttraction) {
+			$travelDestination->touristAtractions[] = $touristAttraction['text'];
+		}
+		
+		foreach ($data['property']['/travel/travel_destination/climate']['values'] as $monthlyClimateData) {
+			$month = $monthlyClimateData['property']['/travel/travel_destination_monthly_climate/month']['values'][0]['text'];
+			$travelDestination->averageMaxTemps[$month] = $monthlyClimateData['property']['/travel/travel_destination_monthly_climate/average_max_temp_c']['values'][0]['text'];
+			$travelDestination->averageMinTemps[$month] = $monthlyClimateData['property']['/travel/travel_destination_monthly_climate/average_min_temp_c']['values'][0]['text'];
+			$travelDestination->averageRainfalls[$month] = $monthlyClimateData['property']['/travel/travel_destination_monthly_climate/average_rainfall_mm']['values'][0]['text'];
+		}
+		
+		foreach ($data['property']['/common/topic/image']['values'] as $image) {
+			//TODO
+			$travelDestination->images[] = $image['id'];
+		}
+		
+		return $travelDestination;
+	}
+
+	private function listTopics($id, $howMany)
 	{
 		$results = array();
 		$cursor = '';
 
-		for ($i = 0; $i < $max; ++$i) {
-			$response = $this->listTopicsPaginated($id, $cursor);
+		$maxIterations = round($howMany / self::MQL_QUERY_LIMIT) + 1;
+		for ($i = 0; $i < $maxIterations; ++$i) {
+			$response = $this->listTopicsPaginated($id, $cursor, $howMany);
 
 			if (0 === count($response['result'])) {
 				continue;
@@ -52,12 +92,12 @@ class Freebase extends AbstractService
 		return $results;
 	}
 
-	private function listTopicsPaginated($type, $cursor)
+	private function listTopicsPaginated($type, $cursor, $howMany)
 	{
 		return $this->mqlReadRequest(
 				array(
 				'type' => $type,
-				'limit' => 100,
+				'limit' => $howMany < self::MQL_QUERY_LIMIT ? $howMany : self::MQL_QUERY_LIMIT,
 				'id' => NULL,
 				'name' => NULL,
 				), $cursor
@@ -82,14 +122,14 @@ class Freebase extends AbstractService
 	{
 		return '[' . json_encode($params) . ']';
 	}
-	
+
 	private function topicRequest($id)
 	{
 		$request = $this->client->get($this->getTopicPath($id));
 		$request->getQuery()->set('key', $this->config['apiKey']);
 		return $request->send()->json();
 	}
-	
+
 	private function getTopicPath($id)
 	{
 		return '/freebase/' . $this->config['freebase']['version'] . '/topic/' . urlencode($id);
