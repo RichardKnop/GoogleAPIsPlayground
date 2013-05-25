@@ -2,7 +2,9 @@
 
 namespace Entity;
 
-class TravelDestination
+use Entity\AbstractEntity;
+
+class TravelDestination extends AbstractEntity
 {
 	
 	public $name;

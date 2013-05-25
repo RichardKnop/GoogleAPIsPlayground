@@ -3,12 +3,16 @@
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/Service/Google/AbstractService.php';
 require_once __DIR__ . '/Service/Google/Freebase.php';
+require_once __DIR__ . '/Service/Google/TravelDestinationFreebase.php';
+require_once __DIR__ . '/Entity/AbstractEntity.php';
 require_once __DIR__ . '/Entity/TravelDestination.php';
+require_once __DIR__ . '/Collection/AbstractCollection.php';
+require_once __DIR__ . '/Collection/TravelDestination.php';
 
 $config = require_once __DIR__ . '/config/application.config.php';
 
-$service = new \Service\Google\Freebase($config);
-$travelDestinations = $service->getTravelDestinations(1000);
+$service = new \Service\Google\TravelDestinationFreebase($config);
+$collection = $service->getTravelDestinations(5);
 
 //foreach ($travelDestinations as $travelDestination) {
 //	var_dump($travelDestination);
@@ -18,7 +22,7 @@ $saveFile = __DIR__ . '/test.data';
 if (file_exists($saveFile)) {
 	unlink($saveFile);
 }
-file_put_contents(__DIR__ . '/test.data', serialize($travelDestinations));
+file_put_contents(__DIR__ . '/test.data', $collection->getAsJson());
 
 //// GOOGLE PLACES
 

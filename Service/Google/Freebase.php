@@ -3,7 +3,6 @@
 namespace Service\Google;
 
 use Service\Google\AbstractService;
-use Entity\TravelDestination;
 
 class Freebase extends AbstractService
 {
@@ -15,49 +14,12 @@ class Freebase extends AbstractService
 		parent::__construct($config, 'freebase');
 	}
 
-	public function getTravelDestinations($howMany)
-	{
-		$travelDestinations = array();
-		foreach ($this->listTopics('/travel/travel_destination', $howMany) as $topic) {
-			$travelDestinations[] = $this->getTravelDestinationEntity($topic['name'], $this->getTopic($topic['id']));
-		}
-		return $travelDestinations;
-	}
-
-	private function getTopic($id)
+	protected function getTopic($id)
 	{
 		return $this->topicRequest($id);
 	}
-	
-	private function getTravelDestinationEntity($name, $data)
-	{
-		$travelDestination = new TravelDestination();
-		$travelDestination->name = $name;
 
-		// website, short and long description
-		$travelDestination->officialWebsite = $this->getPropertyValueText($data, '/common/topic/official_website');
-		$travelDestination->shortDescription = $this->getPropertyPropertyValueText($data, '/common/topic/article', '/common/document/text');
-		$travelDestination->longDescription = $this->getPropertyPropertyValueValue($data, '/common/topic/article', '/common/document/text');
-
-		// geolocations
-		$travelDestination->latitude = $this->getPropertyPropertyValueText($data, '/location/location/geolocation', '/location/geocode/latitude');
-		$travelDestination->longitude = $this->getPropertyPropertyValueText($data, '/location/location/geolocation', '/location/geocode/longitude');
-
-		$travelDestination->nearbyAirports = $this->getPropertyValueTexts($data, '/location/location/nearby_airports');
-		$travelDestination->touristAtractions = $this->getPropertyValueTexts($data, '/travel/travel_destination/tourist_attractions');
-		
-		// climate data
-		$travelDestination->averageMaxTemps = $this->getMonthlyClimateData($data, '/travel/travel_destination_monthly_climate/average_max_temp_c');
-		$travelDestination->averageMinTemps = $this->getMonthlyClimateData($data, '/travel/travel_destination_monthly_climate/average_min_temp_c');
-		$travelDestination->averageRainfalls = $this->getMonthlyClimateData($data, '/travel/travel_destination_monthly_climate/average_rainfall_mm');
-
-		// pictures
-		$travelDestination->images = $this->getImages($data);
-
-		return $travelDestination;
-	}
-
-	private function getPropertyValueText($data, $property)
+	protected function getPropertyValueText($data, $property)
 	{
 		if (isset($data['property'][$property])) {
 			return $data['property'][$property]['values'][0]['text'];
@@ -65,7 +27,7 @@ class Freebase extends AbstractService
 		return NULL;
 	}
 
-	private function getPropertyPropertyValueText($data, $property1, $property2)
+	protected function getPropertyPropertyValueText($data, $property1, $property2)
 	{
 		if (isset($data['property'][$property1])) {
 			if (isset($data['property'][$property1]['values'][0]['property'][$property2])) {
@@ -75,7 +37,7 @@ class Freebase extends AbstractService
 		return NULL;
 	}
 
-	private function getPropertyPropertyValueValue($data, $property1, $property2)
+	protected function getPropertyPropertyValueValue($data, $property1, $property2)
 	{
 		if (isset($data['property'][$property1])) {
 			if (isset($data['property'][$property1]['values'][0]['property'][$property2])) {
@@ -85,7 +47,7 @@ class Freebase extends AbstractService
 		return NULL;
 	}
 
-	private function getPropertyValueTexts($data, $property)
+	protected function getPropertyValueTexts($data, $property)
 	{
 		$values = array();
 		if (isset($data['property'][$property])) {
@@ -95,25 +57,9 @@ class Freebase extends AbstractService
 		}
 		return $values;
 	}
-
-	private function getMonthlyClimateData($data, $property)
-	{
-		$values = array();
-		if (isset($data['property']['/travel/travel_destination/climate'])) {
-			foreach ($data['property']['/travel/travel_destination/climate']['values'] as $monthlyClimateData) {
-				if (isset($monthlyClimateData['property']['/travel/travel_destination_monthly_climate/month'])) {
-					$month = $monthlyClimateData['property']['/travel/travel_destination_monthly_climate/month']['values'][0]['text'];
-					if (isset($monthlyClimateData['property'][$property])) {
-						$values[$month] = $monthlyClimateData['property'][$property]['values'][0]['text'];
-					}
-				}
-			}
-		}
-		return $values;
-	}
 	
 	//TODO
-	private function getImages($data)
+	protected function getImages($data)
 	{
 		$images = array();
 		if (isset($data['property']['/common/topic/image'])) {
@@ -124,7 +70,7 @@ class Freebase extends AbstractService
 		return $images;
 	}
 
-	private function listTopics($id, $howMany)
+	protected function listTopics($id, $howMany)
 	{
 		$results = array();
 		$cursor = '';
@@ -147,7 +93,7 @@ class Freebase extends AbstractService
 		return $results;
 	}
 
-	private function listTopicsPaginated($type, $cursor, $howMany)
+	protected function listTopicsPaginated($type, $cursor, $howMany)
 	{
 		return $this->mqlReadRequest(
 				array(
@@ -159,7 +105,7 @@ class Freebase extends AbstractService
 		);
 	}
 
-	private function mqlReadRequest($params, $cursor)
+	protected function mqlReadRequest($params, $cursor)
 	{
 		$request = $this->client->get($this->getMqlReadPath());
 		$request->getQuery()->set('key', $this->config['apiKey']);
@@ -168,24 +114,24 @@ class Freebase extends AbstractService
 		return $request->send()->json();
 	}
 
-	private function getMqlReadPath()
+	protected function getMqlReadPath()
 	{
 		return '/freebase/' . $this->config['freebase']['version'] . '/mqlread';
 	}
 
-	private function getMqlQuery($params)
+	protected function getMqlQuery($params)
 	{
 		return '[' . json_encode($params) . ']';
 	}
 
-	private function topicRequest($id)
+	protected function topicRequest($id)
 	{
 		$request = $this->client->get($this->getTopicPath($id));
 		$request->getQuery()->set('key', $this->config['apiKey']);
 		return $request->send()->json();
 	}
 
-	private function getTopicPath($id)
+	protected function getTopicPath($id)
 	{
 		return '/freebase/' . $this->config['freebase']['version'] . '/topic/' . urlencode($id);
 	}
