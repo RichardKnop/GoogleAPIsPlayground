@@ -16,17 +16,17 @@ require_once APPLICATION_PATH . '/Database/Adapter/AbstractAdapter.php';
 require_once APPLICATION_PATH . '/Database/Adapter/Sqlite.php';
 
 $config = require_once APPLICATION_PATH . '/config/application.config.php';
-$saveFile = APPLICATION_PATH . '/test.data';
+$saveFile = APPLICATION_PATH . '/travel-destinations.json';
 
 // fetch data from Google APIs
-//$service = new \Service\Google\TravelDestinationFreebase($config);
-//$collection = $service->getTravelDestinations(5);
+$service = new \Service\Google\TravelDestinationFreebase($config);
+$collection = $service->getTravelDestinations(100);
 
 // save as JSON
-//if (file_exists($saveFile)) {
-//	unlink($saveFile);
-//}
-//file_put_contents(__DIR__ . '/test.data', $collection->getAsJson());
+if (file_exists($saveFile)) {
+	unlink($saveFile);
+}
+file_put_contents($saveFile, $collection->getAsJson());
 
 // load JSON and save to sqlite
 $databaseService = new \Database\DatabaseService($config);
