@@ -24,7 +24,7 @@ class TravelDestinationFreebase extends Freebase
 		return $collection;
 	}
 	
-	protected function getTravelDestinationEntity($name, $data)
+	private function getTravelDestinationEntity($name, $data)
 	{
 		$travelDestination = new Entity();
 		$travelDestination->name = $name;
@@ -52,7 +52,7 @@ class TravelDestinationFreebase extends Freebase
 		return $travelDestination;
 	}
 
-	protected function getMonthlyClimateData($data, $property)
+	private function getMonthlyClimateData($data, $property)
 	{
 		$values = array();
 		if (isset($data['property']['/travel/travel_destination/climate'])) {

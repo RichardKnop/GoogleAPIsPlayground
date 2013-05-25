@@ -6,4 +6,8 @@ return array(
 		'baseUrl' => 'https://www.googleapis.com',
 		'version' => 'v1sandbox',
 	),
+	'database' => array(
+		'adapter' => 'Sqlite',
+		'name' => 'travel-destinations.sqlite',
+	),
 );
